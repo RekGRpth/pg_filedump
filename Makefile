@@ -1,11 +1,11 @@
-# View README.pg_filedump first
+# View README.pg_filedump.md first
 
 # note this must match version macros in pg_filedump.h
-FD_VERSION=14.1
+FD_VERSION=16.0
 
 PROGRAM = pg_filedump
 OBJS = pg_filedump.o decode.o stringinfo.o
-REGRESS = datatypes
+REGRESS = datatypes float numeric xml
 EXTRA_CLEAN = *.heap
 
 PG_CONFIG = pg_config
@@ -19,7 +19,7 @@ else
        LIBS = $(libpq_pgport)
 endif
 
-DISTFILES= README.pg_filedump Makefile Makefile.contrib \
+DISTFILES= README.pg_filedump.md Makefile \
 	pg_filedump.h pg_filedump.c decode.h decode.c stringinfo.c
 
 dist:

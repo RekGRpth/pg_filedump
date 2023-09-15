@@ -67,6 +67,9 @@ static int
 decode_int(const char *buffer, unsigned int buff_size, unsigned int *out_size);
 
 static int
+decode_uint(const char *buffer, unsigned int buff_size, unsigned int *out_size);
+
+static int
 decode_bigint(const char *buffer, unsigned int buff_size, unsigned int *out_size);
 
 static int
@@ -144,10 +147,10 @@ static ParseCallbackTableItem callback_table[] =
 		"int", &decode_int
 	},
 	{
-		"oid", &decode_int
+		"oid", &decode_uint
 	},
 	{
-		"xid", &decode_int
+		"xid", &decode_uint
 	},
 	{
 		"serial", &decode_int
@@ -244,6 +247,7 @@ static bool copyStringInitDone = false;
 static char decompress_tmp_buff[64 * 1024];
 
 /* Used by some PostgreSQL macro definitions */
+#if PG_VERSION_NUM < 160000
 void
 ExceptionalCondition(const char *conditionName,
 					 const char *errorType,
@@ -257,6 +261,19 @@ ExceptionalCondition(const char *conditionName,
 		   lineNumber);
 	exit(1);
 }
+#else
+void
+ExceptionalCondition(const char *conditionName,
+					 const char *fileName,
+					 int lineNumber)
+{
+	printf("Exceptional condition: name = %s, type = FailedAssertion, fname = %s, line = %d\n",
+		   conditionName ? conditionName : "(NULL)",
+		   fileName ? fileName : "(NULL)",
+		   lineNumber);
+	exit(1);
+}
+#endif
 
 /* Append given string to current COPY line */
 static void
@@ -685,6 +702,27 @@ decode_int(const char *buffer, unsigned int buff_size, unsigned int *out_size)
 
 	CopyAppendFmt("%d", *(int32 *) buffer);
 	*out_size = sizeof(int32) + delta;
+	return 0;
+}
+
+/* Decode an unsigned int type */
+static int
+decode_uint(const char *buffer, unsigned int buff_size, unsigned int *out_size)
+{
+	const char *new_buffer = (const char *) INTALIGN(buffer);
+	unsigned int delta = (unsigned int) ((uintptr_t) new_buffer - (uintptr_t) buffer);
+
+	if (buff_size < delta)
+		return -1;
+
+	buff_size -= delta;
+	buffer = new_buffer;
+
+	if (buff_size < sizeof(uint32))
+		return -2;
+
+	CopyAppendFmt("%u", *(uint32 *) buffer);
+	*out_size = sizeof(uint32) + delta;
 	return 0;
 }
 
@@ -1270,6 +1308,7 @@ static int DumpCompressedString(const char *data, int32 compressed_size, int (*p
 #else
 			printf("Error: compression method lz4 not supported.\n");
 			printf("Try to rebuild pg_filedump for PostgreSQL server of version 14+ with --with-lz4 option.\n");
+			free(decompress_tmp_buff);
 			return -2;
 #endif
 		default:
@@ -1350,8 +1389,7 @@ ReadStringFromToast(const char *buffer,
 					toast_relation_filename);
 			result = -1;
 		}
-
-		if (result == 0)
+		else
 		{
 			unsigned int toast_relation_block_size = GetBlockSize(toast_rel_fp);
 			fseek(toast_rel_fp, 0, SEEK_SET);
@@ -1381,9 +1419,9 @@ ReadStringFromToast(const char *buffer,
 			}
 
 			free(toast_data);
+			fclose(toast_rel_fp);
 		}
 
-		fclose(toast_rel_fp);
 		free(toast_relation_path);
 	}
 	/* If tag is indirect or expanded, it was stored in memory. */

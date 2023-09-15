@@ -3,7 +3,7 @@
  *				   formatting heap (data), index and control files.
  *
  * Copyright (c) 2002-2010 Red Hat, Inc.
- * Copyright (c) 2011-2022, PostgreSQL Global Development Group
+ * Copyright (c) 2011-2023, PostgreSQL Global Development Group
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -159,7 +159,7 @@ DisplayOptions(unsigned int validOptions)
 		printf
 			("\nVersion %s (for %s)"
 			 "\nCopyright (c) 2002-2010 Red Hat, Inc."
-		  "\nCopyright (c) 2011-2022, PostgreSQL Global Development Group\n",
+		  "\nCopyright (c) 2011-2023, PostgreSQL Global Development Group\n",
 			 FD_VERSION, FD_PG_VERSION);
 
 	printf
@@ -681,7 +681,7 @@ GetBlockSize(FILE *fp)
 	rewind(fp);
 
 	if (bytesRead == sizeof(PageHeaderData))
-		localSize = (unsigned int) PageGetPageSize(&localCache);
+		localSize = (unsigned int) PageGetPageSize(localCache);
 	else
 	{
 		printf("Error: Unable to read full page header from block 0.\n"
@@ -1502,6 +1502,10 @@ FormatSpecial(char *buffer)
 					strcat(flagString, "HASGARBAGE|");
 				if (btreeSection->btpo_flags & BTP_INCOMPLETE_SPLIT)
 					strcat(flagString, "INCOMPLETESPLIT|");
+#if PG_VERSION_NUM >= 140000
+				if (btreeSection->btpo_flags & BTP_HAS_FULLXID)
+					strcat(flagString, "HASFULLXID|");
+#endif
 				if (strlen(flagString))
 					flagString[strlen(flagString) - 1] = '\0';
 
@@ -1526,7 +1530,7 @@ FormatSpecial(char *buffer)
 			{
 				HashPageOpaque hashSection = (HashPageOpaque) (buffer + specialOffset);
 
-				if (hashSection->hasho_flag & LH_UNUSED_PAGE)
+				if ((hashSection->hasho_flag & LH_PAGE_TYPE) == LH_UNUSED_PAGE)
 					strcat(flagString, "UNUSED|");
 				if (hashSection->hasho_flag & LH_OVERFLOW_PAGE)
 					strcat(flagString, "OVERFLOW|");
@@ -1536,6 +1540,14 @@ FormatSpecial(char *buffer)
 					strcat(flagString, "BITMAP|");
 				if (hashSection->hasho_flag & LH_META_PAGE)
 					strcat(flagString, "META|");
+				if (hashSection->hasho_flag & LH_BUCKET_BEING_POPULATED)
+					strcat(flagString, "BUCKET_BEING_POPULATED|");
+				if (hashSection->hasho_flag & LH_BUCKET_BEING_SPLIT)
+					strcat(flagString, "BUCKET_BEING_SPLIT|");
+				if (hashSection->hasho_flag & LH_BUCKET_NEEDS_SPLIT_CLEANUP)
+					strcat(flagString, "BUCKET_NEEDS_SPLIT_CLEANUP|");
+				if (hashSection->hasho_flag & LH_PAGE_HAS_DEAD_TUPLES)
+					strcat(flagString, "PAGE_HAS_DEAD_TUPLES|");
 				if (strlen(flagString))
 					flagString[strlen(flagString) - 1] = '\0';
 				printf(" Hash Index Section:\n"
@@ -1561,6 +1573,8 @@ FormatSpecial(char *buffer)
 					strcat(flagString, "TUPLES_DELETED|");
 				if (gistSection->flags & F_FOLLOW_RIGHT)
 					strcat(flagString, "FOLLOW_RIGHT|");
+				if (gistSection->flags & F_HAS_GARBAGE)
+					strcat(flagString, "HAS_GARBAGE|");
 				if (strlen(flagString))
 					flagString[strlen(flagString) - 1] = '\0';
 				printf(" GIST Index Section:\n"

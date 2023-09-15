@@ -39,16 +39,6 @@ insert into date values ('2000-01-01'), ('1900-02-02'), ('2100-12-31'), ('100-01
 \set relname date
 \ir run_test.sql
 
-create table float4 (x float4);
-insert into float4 values (0), ('-0'), ('-infinity'), ('infinity'), ('NaN'), (null);
-\set relname float4
-\ir run_test.sql
-
-create table float8 (x float8);
-insert into float8 values (0), ('-0'), ('-infinity'), ('infinity'), ('NaN'), (null);
-\set relname float8
-\ir run_test.sql
-
 create table int (x int);
 insert into int values (-1), (0), (1), (null);
 \set relname int
@@ -67,11 +57,6 @@ insert into macaddr values ('00:10:20:30:40:50'), (null);
 create table name (x name);
 insert into name values ('name'), ('1234567890123456789012345678901234567890123456789012345678901234567890'), (null);
 \set relname name
-\ir run_test.sql
-
-create table numeric (x numeric);
-insert into numeric values (0), ('12341234'), ('-567890'), ('-Infinity'), ('Infinity'), ('NaN'), (null);
-\set relname numeric
 \ir run_test.sql
 
 create table oid (x oid);
@@ -127,9 +112,4 @@ insert into "varcharN" values ('Hello World'), (''), (null);
 create table xid (x xid);
 insert into xid values ('-1'), ('0'), ('1'), (null);
 \set relname xid
-\ir run_test.sql
-
-create table xml (x xml);
-insert into xml values ('<xml></xml>'), (null);
-\set relname xml
 \ir run_test.sql
